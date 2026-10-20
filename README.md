@@ -5,7 +5,7 @@
 A compact CPU, RAM and GPU monitor that sits right on the Windows 11 taskbar, next to the system tray.
 Hover over it to see the details.
 
-![Details on hover](docs/details_en.png)
+![Details on hover](docs/hover_en.png)
 
 ![On the taskbar](docs/panel.png)
 
