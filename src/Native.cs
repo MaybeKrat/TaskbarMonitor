@@ -1,6 +1,5 @@
 using System;
 using System.Runtime.InteropServices;
-using System.Text;
 
 namespace TaskbarMonitor;
 
@@ -22,6 +21,7 @@ internal static class Native
     public const int MDT_EFFECTIVE_DPI = 0;
     public const int SM_SWAPBUTTON = 23, SM_CXDRAG = 68, SM_CYDRAG = 69;
     public const int VK_LBUTTON = 1, VK_RBUTTON = 2;
+    public const int QUNS_BUSY = 2, QUNS_RUNNING_D3D_FULL_SCREEN = 3, QUNS_PRESENTATION_MODE = 4;
     public const int IDC_ARROW = 32512;
     public const uint MF_STRING = 0, MF_CHECKED = 0x8, MF_SEPARATOR = 0x800;
     public const uint TPM_RIGHTBUTTON = 0x0002, TPM_BOTTOMALIGN = 0x0020, TPM_RETURNCMD = 0x0100;
@@ -85,7 +85,7 @@ internal static class Native
     [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern bool GetMonitorInfo(IntPtr monitor, ref MONITORINFO info);
     [DllImport("shcore.dll")] public static extern int GetDpiForMonitor(IntPtr monitor, int type, out uint dpiX, out uint dpiY);
     [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
-    [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern int GetClassName(IntPtr hwnd, StringBuilder name, int size);
+    [DllImport("shell32.dll")] public static extern int SHQueryUserNotificationState(out int state);
     [DllImport("user32.dll")] public static extern IntPtr SetCapture(IntPtr hwnd);
     [DllImport("user32.dll")] public static extern bool ReleaseCapture();
     [DllImport("user32.dll")] public static extern short GetAsyncKeyState(int key);

@@ -151,7 +151,11 @@ internal sealed class TaskbarPanel : IDisposable
     /// </summary>
     Layout Docked(IntPtr bar, double? x, bool embedded)
     {
-        GetWindowRect(bar, out RECT r);
+        // Встроенное окно едет вместе с панелью задач, а примагниченное при перетаскивании стоит там,
+        // где спрятанная автоскрытием панель задач появится, — а не уезжает с ней за край экрана.
+        RECT r;
+        if (embedded) GetWindowRect(bar, out r);
+        else r = Displays.Shown(bar);
         // Панель нарисована под панель задач высотой 60 px (как при масштабе 125%) и масштабируется по её фактической высоте.
         double k = (r.Bottom - r.Top) / 60.0;
         int width = _renderer.Size(_sample, k, docked: true).Width;
@@ -197,7 +201,7 @@ internal sealed class TaskbarPanel : IDisposable
     {
         foreach (IntPtr bar in Displays.Taskbars())
         {
-            if (!GetWindowRect(bar, out RECT r)) continue;
+            RECT r = Displays.Shown(bar);
             double k = (r.Bottom - r.Top) / 60.0;
             if (_cursor.X < r.Left || _cursor.X >= r.Right || _cursor.Y < r.Top - Magnet * k || _cursor.Y >= r.Bottom) continue;
             double width = _renderer.Size(_sample, k, docked: true).Width;

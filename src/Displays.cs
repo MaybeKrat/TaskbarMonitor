@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
-using System.Text;
 using static TaskbarMonitor.Native;
 
 namespace TaskbarMonitor;
@@ -42,15 +41,31 @@ internal static class Displays
         return FindWindow("Shell_TrayWnd", null);
     }
 
-    /// <summary>Впереди на этом мониторе приложение на весь экран — игра или видео.</summary>
+    /// <summary>
+    /// Впереди на этом мониторе приложение на весь экран — игра или видео. Что приложение на весь экран, говорит
+    /// Windows (так же она решает, глушить ли уведомления): по размеру окна его не отличить от развёрнутого окна,
+    /// когда панель задач скрывается автоматически.
+    /// </summary>
     public static bool FullscreenApp(Display display)
     {
+        if (SHQueryUserNotificationState(out int state) != 0 || state is not (QUNS_BUSY or QUNS_RUNNING_D3D_FULL_SCREEN or QUNS_PRESENTATION_MODE))
+            return false;
         IntPtr window = GetForegroundWindow();
-        if (window == IntPtr.Zero || MonitorFromWindow(window, MONITOR_DEFAULTTONEAREST) != display.Handle) return false;
-        var name = new StringBuilder(16);
-        GetClassName(window, name, name.Capacity);
-        if (name.ToString() is "Progman" or "WorkerW") return false;   // рабочий стол тоже на весь экран
         RECT b = display.Bounds;
-        return GetWindowRect(window, out RECT r) && r.Left <= b.Left && r.Top <= b.Top && r.Right >= b.Right && r.Bottom >= b.Bottom;
+        return window != IntPtr.Zero && MonitorFromWindow(window, MONITOR_DEFAULTTONEAREST) == display.Handle
+            && GetWindowRect(window, out RECT r) && r.Left <= b.Left && r.Top <= b.Top && r.Right >= b.Right && r.Bottom >= b.Bottom;
+    }
+
+    /// <summary>Где панель задач, когда она видна: спрятанная автоскрытием уезжает за нижний край монитора.</summary>
+    public static RECT Shown(IntPtr bar)
+    {
+        GetWindowRect(bar, out RECT r);
+        int below = r.Bottom - Of(bar).Bounds.Bottom;
+        if (below > 0)
+        {
+            r.Top -= below;
+            r.Bottom -= below;
+        }
+        return r;
     }
 }
