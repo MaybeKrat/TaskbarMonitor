@@ -56,12 +56,15 @@ while running, because .NET unpacks itself into RAM.
 
 Windows 11 has no API for taskbar widgets, so the panel is a transparent child window placed inside
 the taskbar left of the tray. It is drawn with WPF and shown through a per-pixel-alpha layered window.
+When the taskbar icons are aligned left, Windows puts the Widgets button (weather) next to the tray;
+the panel then moves left of it. The button has no window of its own, so its position comes from UI Automation.
 
 | File | What it does |
 |---|---|
 | `src/Program.cs` | Entry point: single instance, sensor polling every 500 ms, smoothing |
 | `src/Sensors.cs`, `src/Afterburner.cs` | Sensors: Windows performance counters, NVML, MSI Afterburner shared memory |
 | `src/TaskbarPanel.cs` | The window inside the taskbar: ring animation, hover, click, menu |
+| `src/Widgets.cs` | Where the Widgets button is, so the panel does not cover it |
 | `src/PanelRenderer.cs` | How the panel looks |
 | `src/DetailsFlyout.cs`, `src/DetailsRenderer.cs` | Hover card: the window and how it looks |
 | `src/Theme.cs`, `src/Strings.cs` | Light and dark colors, temperature colors; English and Russian texts |

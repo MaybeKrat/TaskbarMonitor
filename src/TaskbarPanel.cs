@@ -16,6 +16,7 @@ internal sealed class TaskbarPanel : IDisposable
 {
     const string ClassName = "TaskbarMonitorPanel";
     const double TrayGap = 40;      // от правого края панели до трея, px при 125%
+    const double WidgetsGap = 56;   // до кнопки «Виджеты»: на глаз столько же, сколько от погоды до трея
     const uint HoverDelay = 300;    // мс до показа подробностей
     const double ArcStep = 0.3;     // сдвиг дуги меньше 0,3% (доли пикселя) показывается без анимации
     const int MenuExit = 1, MenuAutostart = 2, MenuCpu = 10, MenuRam = 20, MenuGpu = 30;   // у выбора значений — номер первого пункта
@@ -27,6 +28,7 @@ internal sealed class TaskbarPanel : IDisposable
     readonly IntPtr _instance = GetModuleHandle(null);
     IntPtr _hwnd, _tray;
     RECT _placed;
+    RECT? _widgets;
     bool _hover, _tracking, _showDetails;
     Sample _sample = Sample.Empty;
     Settings _settings;
@@ -63,9 +65,11 @@ internal sealed class TaskbarPanel : IDisposable
         _frames.Tick += (_, _) => Animate();
     }
 
-    public void Update(Sample sample)
+    /// <param name="widgets">Где на экране кнопка «Виджеты»; null — её нет.</param>
+    public void Update(Sample sample, RECT? widgets)
     {
         _sample = sample;
+        _widgets = widgets;
         double[] targets = PanelRenderer.Loads(sample);
         bool animate = false;
         for (int i = 0; i < _arcs.Length; i++)
@@ -98,7 +102,11 @@ internal sealed class TaskbarPanel : IDisposable
         _k = _height / 60.0;
         _width = _renderer.Width(_sample, _k);
         _theme = Theme.Current();
-        int left = trayLeft - (int)Math.Round(TrayGap * _k) - _width;
+        int right = trayLeft - (int)Math.Round(TrayGap * _k);
+        // Кнопка «Виджеты» в правой половине панели задач стоит у трея — тогда панель встаёт левее неё.
+        if (_widgets is RECT w && w.Left > (bar.Left + bar.Right) / 2 && w.Left < trayLeft)
+            right = w.Left - (int)Math.Round(WidgetsGap * _k);
+        int left = right - _width;
         var screen = new RECT { Left = left, Top = bar.Top, Right = left + _width, Bottom = bar.Bottom };
 
         Render();

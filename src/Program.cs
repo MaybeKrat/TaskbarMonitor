@@ -24,19 +24,21 @@ internal static class Program
         using var panel = new TaskbarPanel(Interval, Settings.Load());
         panel.ExitRequested += () => dispatcher.BeginInvokeShutdown(DispatcherPriority.Normal);
 
-        // Датчики опрашиваются в фоне: окно живёт внутри панели задач, и его поток не должен подвисать.
+        // Датчики и кнопка «Виджеты» опрашиваются в фоне: окно живёт внутри панели задач, и его поток не должен подвисать.
         using var stop = new CancellationTokenSource();
         var polling = Task.Run(async () =>
         {
             double weight = 1 - Math.Exp(-Interval.TotalSeconds / SmoothingSeconds);
             Sample smoothed = Sample.Empty;
+            var widgets = new Widgets();
             using var timer = new PeriodicTimer(Interval);
             while (await timer.WaitForNextTickAsync(stop.Token))
             {
                 try
                 {
                     Sample sample = smoothed = Sample.Smooth(smoothed, sensors.Read(), weight);
-                    _ = dispatcher.InvokeAsync(() => panel.Update(sample));
+                    var widgetsBounds = widgets.Bounds();
+                    _ = dispatcher.InvokeAsync(() => panel.Update(sample, widgetsBounds));
                 }
                 catch (Exception e) { Log.Error(e); }
             }
