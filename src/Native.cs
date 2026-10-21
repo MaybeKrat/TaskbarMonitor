@@ -23,11 +23,11 @@ internal static class Native
     public const int SM_SWAPBUTTON = 23, SM_CXDRAG = 68, SM_CYDRAG = 69;
     public const int VK_LBUTTON = 1, VK_RBUTTON = 2;
     public const int IDC_ARROW = 32512;
-    public const uint MF_STRING = 0, MF_BYCOMMAND = 0, MF_CHECKED = 0x8, MF_POPUP = 0x10, MF_SEPARATOR = 0x800;
+    public const uint MF_STRING = 0, MF_CHECKED = 0x8, MF_SEPARATOR = 0x800;
     public const uint TPM_RIGHTBUTTON = 0x0002, TPM_BOTTOMALIGN = 0x0020, TPM_RETURNCMD = 0x0100;
     public const int ULW_ALPHA = 2;
     public const byte AC_SRC_OVER = 0, AC_SRC_ALPHA = 1;
-    public static readonly IntPtr HWND_TOP = IntPtr.Zero, HWND_TOPMOST = new(-1);
+    public static readonly IntPtr HWND_TOP = IntPtr.Zero, HWND_TOPMOST = new(-1), HWND_NOTOPMOST = new(-2);
 
     public delegate IntPtr WndProc(IntPtr hwnd, uint msg, IntPtr wParam, IntPtr lParam);
 
@@ -96,7 +96,6 @@ internal static class Native
     [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hwnd);
     [DllImport("user32.dll")] public static extern IntPtr CreatePopupMenu();
     [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern bool AppendMenu(IntPtr menu, uint flags, IntPtr id, string? text);
-    [DllImport("user32.dll")] public static extern bool CheckMenuRadioItem(IntPtr menu, uint first, uint last, uint check, uint flags);
     [DllImport("user32.dll")] public static extern int TrackPopupMenuEx(IntPtr menu, uint flags, int x, int y, IntPtr hwnd, IntPtr tpm);
     [DllImport("user32.dll")] public static extern bool DestroyMenu(IntPtr menu);
     [DllImport("user32.dll", SetLastError = true)]

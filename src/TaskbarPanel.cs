@@ -25,7 +25,7 @@ internal sealed class TaskbarPanel : IDisposable
     const double Magnet = 24;       // px при 125%: на столько выше панели задач перетаскиваемая панель уже примагничивается к ней
     const uint HoverDelay = 300;    // мс до показа подробностей
     const double ArcStep = 0.3;     // сдвиг дуги меньше 0,3% (доли пикселя) показывается без анимации
-    const int MenuExit = 1, MenuAutostart = 2, MenuTray = 3, MenuCpu = 10, MenuRam = 20, MenuGpu = 30;   // у выбора значений — номер первого пункта
+    const int MenuExit = 1, MenuAutostart = 2, MenuTray = 3, MenuSettings = 4, MenuOnTop = 5;
 
     /// <summary>
     /// Где панель. Parent — панель задач, в которую встроено окно; IntPtr.Zero — окно само по себе, поверх остальных.
@@ -45,6 +45,7 @@ internal sealed class TaskbarPanel : IDisposable
     bool _hover, _tracking, _showDetails;
     Sample _sample = Sample.Empty;
     Settings _settings;
+    SettingsWindow? _settingsWindow;
 
     // Перетаскивание: пока кнопка мыши зажата, панель едет за курсором (кнопку опрашивает таймер, чтобы не зависеть от окна под курсором).
     readonly DispatcherTimer _drag = new(DispatcherPriority.Input) { Interval = TimeSpan.FromMilliseconds(16) };
@@ -62,6 +63,7 @@ internal sealed class TaskbarPanel : IDisposable
     Theme _theme = Theme.Light;
     double _k = 1;
     int _width, _height, _margin;
+    bool _docked;   // панель на панели задач или примагничена к ней: высота по панели задач, элементы в строку
 
     public event Action? ExitRequested;
 
@@ -115,9 +117,10 @@ internal sealed class TaskbarPanel : IDisposable
         _height = _content.Bottom - _content.Top;
         _k = layout.K;
         _margin = layout.Margin;
+        _docked = layout.Bar != IntPtr.Zero;
 
         // Отдельная панель прячется, пока впереди игра или видео на весь экран, — как и панель задач.
-        if (!_dragging && layout.Parent == IntPtr.Zero && Displays.FullscreenApp(layout.Display))
+        if (!_dragging && layout.Parent == IntPtr.Zero && _settings.HideInFullscreen && Displays.FullscreenApp(layout.Display))
         {
             _showDetails = false;
             _details.Hide();
@@ -151,7 +154,7 @@ internal sealed class TaskbarPanel : IDisposable
         GetWindowRect(bar, out RECT r);
         // Панель нарисована под панель задач высотой 60 px (как при масштабе 125%) и масштабируется по её фактической высоте.
         double k = (r.Bottom - r.Top) / 60.0;
-        int width = _renderer.Width(_sample, k);
+        int width = _renderer.Size(_sample, k, docked: true).Width;
         int left = x is double f
             ? Math.Clamp((int)Math.Round(r.Left + f * (r.Right - r.Left) - width / 2.0), r.Left, Math.Max(r.Left, r.Right - width))
             : TrayLeft(bar, r, width, k);
@@ -175,7 +178,7 @@ internal sealed class TaskbarPanel : IDisposable
     /// <summary>Панель отдельной карточкой на экране, в масштабе монитора; clamp — не заходить за его рабочую область.</summary>
     Layout Floating(Display display, POINT at, bool clamp)
     {
-        int width = _renderer.Width(_sample, display.K), height = (int)Math.Round(60 * display.K);
+        var (width, height) = _renderer.Size(_sample, display.K, docked: false);
         if (clamp)
         {
             RECT work = display.Work;
@@ -197,11 +200,11 @@ internal sealed class TaskbarPanel : IDisposable
             if (!GetWindowRect(bar, out RECT r)) continue;
             double k = (r.Bottom - r.Top) / 60.0;
             if (_cursor.X < r.Left || _cursor.X >= r.Right || _cursor.Y < r.Top - Magnet * k || _cursor.Y >= r.Bottom) continue;
-            double width = _renderer.Width(_sample, k);
+            double width = _renderer.Size(_sample, k, docked: true).Width;
             return Docked(bar, (_cursor.X + (0.5 - _grabX) * width - r.Left) / (r.Right - r.Left), embedded: false);
         }
         Display display = Displays.At(_cursor);
-        int w = _renderer.Width(_sample, display.K), h = (int)Math.Round(60 * display.K);
+        var (w, h) = _renderer.Size(_sample, display.K, docked: false);
         return Floating(display, new POINT { X = _cursor.X - (int)Math.Round(_grabX * w), Y = _cursor.Y - (int)Math.Round(_grabY * h) }, clamp: false);
     }
 
@@ -213,7 +216,7 @@ internal sealed class TaskbarPanel : IDisposable
         {
             if (m > 0) Card(dc, new Rect(m, m, _width, _height), _theme, _k);   // отдельно на экране — на карточке
             dc.PushTransform(new TranslateTransform(m, m));
-            _renderer.Draw(dc, _sample, _arcs, _theme, _k, _width, _height, _hover);
+            _renderer.Draw(dc, _sample, _arcs, _theme, _k, _width, _height, _hover, _docked);
             dc.Pop();
         });
     }
@@ -237,7 +240,8 @@ internal sealed class TaskbarPanel : IDisposable
         bool moved = origin.X != _placed.Left || origin.Y != _placed.Top || w != _placed.Right - _placed.Left || h != _placed.Bottom - _placed.Top;
         bool covered = _parent != IntPtr.Zero && GetWindow(_hwnd, GW_HWNDPREV) != IntPtr.Zero;   // Проводник поднял над панелью своё окно
         if (!moved && !covered && IsWindowVisible(_hwnd)) return;
-        SetWindowPos(_hwnd, _parent != IntPtr.Zero ? HWND_TOP : HWND_TOPMOST, origin.X, origin.Y, w, h, SWP_NOACTIVATE | SWP_SHOWWINDOW);
+        IntPtr z = _parent != IntPtr.Zero ? HWND_TOP : _dragging || _settings.OnTop ? HWND_TOPMOST : HWND_NOTOPMOST;
+        SetWindowPos(_hwnd, z, origin.X, origin.Y, w, h, SWP_NOACTIVATE | SWP_SHOWWINDOW);
         _placed = new RECT { Left = origin.X, Top = origin.Y, Right = origin.X + w, Bottom = origin.Y + h };
     }
 
@@ -248,7 +252,7 @@ internal sealed class TaskbarPanel : IDisposable
         _hwnd = parent != IntPtr.Zero
             ? CreateWindowEx(WS_EX_LAYERED | WS_EX_NOPARENTNOTIFY, ClassName, "TaskbarMonitor", WS_CHILD | WS_CLIPSIBLINGS,
                 0, 0, 0, 0, parent, IntPtr.Zero, _instance, IntPtr.Zero)
-            : CreateWindowEx(WS_EX_LAYERED | WS_EX_TOOLWINDOW | WS_EX_TOPMOST | WS_EX_NOACTIVATE, ClassName, "TaskbarMonitor", WS_POPUP,
+            : CreateWindowEx(WS_EX_LAYERED | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE, ClassName, "TaskbarMonitor", WS_POPUP,
                 0, 0, 0, 0, IntPtr.Zero, IntPtr.Zero, _instance, IntPtr.Zero);
         if (_hwnd == IntPtr.Zero) throw new Win32Exception();
         _parent = parent;
@@ -393,12 +397,13 @@ internal sealed class TaskbarPanel : IDisposable
         IntPtr menu = CreatePopupMenu();
         try
         {
-            AppendMenu(menu, MF_STRING | (Autostart.Enabled ? MF_CHECKED : 0), (IntPtr)MenuAutostart, Strings.Autostart);
-            if (_settings.Placement != Placement.Tray) AppendMenu(menu, MF_STRING, (IntPtr)MenuTray, Strings.BackToTray);
+            AppendMenu(menu, MF_STRING, (IntPtr)MenuSettings, Strings.SettingsMenu);
             AppendMenu(menu, MF_SEPARATOR, IntPtr.Zero, null);
-            AppendChoice(menu, "CPU", MenuCpu, (int)_settings.Cpu, Strings.Clock, Strings.Temperature);
-            AppendChoice(menu, "RAM", MenuRam, (int)_settings.Ram, Strings.Used, Strings.Free);
-            AppendChoice(menu, "GPU", MenuGpu, (int)_settings.Gpu, Strings.Power, Strings.Temperature);
+            // Поверх окон бывает только панель на экране: панель задач и так всегда поверх.
+            if (_settings.Placement == Placement.Screen)
+                AppendMenu(menu, MF_STRING, (IntPtr)MenuOnTop, _settings.OnTop ? Strings.Unpin : Strings.Pin);
+            if (_settings.Placement != Placement.Tray) AppendMenu(menu, MF_STRING, (IntPtr)MenuTray, Strings.BackToTray);
+            AppendMenu(menu, MF_STRING | (Autostart.Enabled ? MF_CHECKED : 0), (IntPtr)MenuAutostart, Strings.Autostart);
             AppendMenu(menu, MF_SEPARATOR, IntPtr.Zero, null);
             AppendMenu(menu, MF_STRING, (IntPtr)MenuExit, Strings.Exit);
 
@@ -406,17 +411,7 @@ internal sealed class TaskbarPanel : IDisposable
             SetForegroundWindow(_parent != IntPtr.Zero ? _parent : _hwnd);   // иначе меню не закроется кликом мимо него
             Execute(TrackPopupMenuEx(menu, TPM_RETURNCMD | TPM_RIGHTBUTTON | TPM_BOTTOMALIGN, p.X, p.Y, _hwnd, IntPtr.Zero));
         }
-        finally { DestroyMenu(menu); }   // подменю удаляются вместе с меню
-    }
-
-    /// <summary>Подменю с выбором одного значения: пункты first, first + 1, …; выбранный отмечен точкой.</summary>
-    static void AppendChoice(IntPtr menu, string title, int first, int selected, params string[] options)
-    {
-        IntPtr submenu = CreatePopupMenu();
-        for (int i = 0; i < options.Length; i++)
-            AppendMenu(submenu, MF_STRING, (IntPtr)(first + i), options[i]);
-        CheckMenuRadioItem(submenu, (uint)first, (uint)(first + options.Length - 1), (uint)(first + selected), MF_BYCOMMAND);
-        AppendMenu(menu, MF_POPUP, submenu, title);
+        finally { DestroyMenu(menu); }
     }
 
     void Execute(int command)
@@ -426,16 +421,28 @@ internal sealed class TaskbarPanel : IDisposable
             case MenuExit: ExitRequested?.Invoke(); break;
             case MenuAutostart: Autostart.Enabled = !Autostart.Enabled; break;
             case MenuTray: Apply(_settings with { Placement = Placement.Tray, Display = null }); break;
-            case >= MenuCpu and < MenuCpu + 10: Apply(_settings with { Cpu = (CpuValue)(command - MenuCpu) }); break;
-            case >= MenuRam and < MenuRam + 10: Apply(_settings with { Ram = (RamValue)(command - MenuRam) }); break;
-            case >= MenuGpu and < MenuGpu + 10: Apply(_settings with { Gpu = (GpuValue)(command - MenuGpu) }); break;
+            case MenuSettings: ShowSettings(); break;
+            case MenuOnTop: Apply(_settings with { OnTop = !_settings.OnTop }); break;
         }
+    }
+
+    /// <summary>Окно настроек; если оно уже открыто — выходит на передний план.</summary>
+    void ShowSettings()
+    {
+        if (_settingsWindow == null)
+        {
+            _settingsWindow = new SettingsWindow(() => _settings, Apply);
+            _settingsWindow.Closed += (_, _) => _settingsWindow = null;
+            _settingsWindow.Show();
+        }
+        _settingsWindow.Activate();
     }
 
     void Apply(Settings settings)
     {
         _settings = _renderer.Settings = settings;
         settings.Save();
+        _placed = default;   // заново выставить окно: могло поменяться «поверх всех окон»
         Refresh();
     }
 
@@ -463,6 +470,7 @@ internal sealed class TaskbarPanel : IDisposable
     {
         _frames.Stop();
         _drag.Stop();
+        _settingsWindow?.Close();
         DestroyPanel();
         _details.Dispose();
         _canvas.Dispose();
