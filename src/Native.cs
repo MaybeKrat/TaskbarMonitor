@@ -17,6 +17,7 @@ internal static class Native
     public const int SW_HIDE = 0;
     public const uint GW_HWNDPREV = 3;
     public const uint TME_HOVER = 0x1, TME_LEAVE = 0x2;
+    public const uint MONITOR_DEFAULTTOPRIMARY = 1;
     public const int IDC_ARROW = 32512;
     public const uint MF_STRING = 0, MF_BYCOMMAND = 0, MF_CHECKED = 0x8, MF_POPUP = 0x10, MF_SEPARATOR = 0x800;
     public const uint TPM_RIGHTBUTTON = 0x0002, TPM_BOTTOMALIGN = 0x0020, TPM_RETURNCMD = 0x0100;
@@ -31,6 +32,7 @@ internal static class Native
     [StructLayout(LayoutKind.Sequential)] public struct SIZE { public int cx, cy; }
     [StructLayout(LayoutKind.Sequential)] public struct BLENDFUNCTION { public byte BlendOp, BlendFlags, SourceConstantAlpha, AlphaFormat; }
     [StructLayout(LayoutKind.Sequential)] public struct TRACKMOUSEEVENT { public int cbSize; public uint dwFlags; public IntPtr hwndTrack; public uint dwHoverTime; }
+    [StructLayout(LayoutKind.Sequential)] public struct MONITORINFO { public int cbSize; public RECT rcMonitor, rcWork; public uint dwFlags; }
 
     [StructLayout(LayoutKind.Sequential)]
     public struct BITMAPINFOHEADER
@@ -67,6 +69,8 @@ internal static class Native
     [DllImport("user32.dll")] public static extern bool ScreenToClient(IntPtr hwnd, ref POINT point);
     [DllImport("user32.dll")] public static extern bool SetWindowPos(IntPtr hwnd, IntPtr after, int x, int y, int w, int h, uint flags);
     [DllImport("user32.dll")] public static extern uint GetDpiForWindow(IntPtr hwnd);
+    [DllImport("user32.dll")] public static extern IntPtr MonitorFromWindow(IntPtr hwnd, uint flags);
+    [DllImport("user32.dll")] public static extern bool GetMonitorInfo(IntPtr monitor, ref MONITORINFO info);
     [DllImport("user32.dll")] public static extern bool TrackMouseEvent(ref TRACKMOUSEEVENT tme);
     [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern IntPtr LoadCursor(IntPtr instance, IntPtr name);
     [DllImport("user32.dll")] public static extern bool GetCursorPos(out POINT point);
