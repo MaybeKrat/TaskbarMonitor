@@ -1,5 +1,4 @@
 using System;
-using System.Runtime.InteropServices;
 using System.Windows.Automation;
 using static TaskbarMonitor.Native;
 
@@ -64,10 +63,6 @@ internal sealed class Widgets
     }
 
     /// <summary>Панель задач скрыта или уехала за нижний край экрана: спрятана автоскрытием, прячется или показывается.</summary>
-    static bool Hidden(IntPtr tray)
-    {
-        var monitor = new MONITORINFO { cbSize = Marshal.SizeOf<MONITORINFO>() };
-        return !IsWindowVisible(tray) || GetWindowRect(tray, out RECT bar) && GetMonitorInfo(MonitorFromWindow(tray, MONITOR_DEFAULTTOPRIMARY), ref monitor)
-            && bar.Bottom > monitor.rcMonitor.Bottom;
-    }
+    static bool Hidden(IntPtr tray) =>
+        !IsWindowVisible(tray) || GetWindowRect(tray, out RECT bar) && bar.Bottom > Displays.Of(tray).Bounds.Bottom;
 }

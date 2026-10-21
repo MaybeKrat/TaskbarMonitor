@@ -18,12 +18,15 @@ Hover over it to see the details.
 - Hover card: CPU load, clock, temperature and power; RAM load, used and free; GPU load, clock,
   temperature, power and its limit, VRAM, fans. Temperatures are colored from normal to red.
 - Click opens Task Manager. Right-click menu: start with Windows, values, exit.
+- Drag the panel with the mouse anywhere: along the taskbar, onto the taskbar of another display, or onto
+  the screen as a separate card on top of other windows. Near a taskbar it snaps into it. The card hides
+  while a full-screen app is in front, like the taskbar. Right-click → “Move back to the tray” returns it.
 - Light and dark taskbar, any resolution and display scale. English or Russian, following Windows.
 - No administrator rights required.
 
 ## Requirements
 
-- Windows 11 with the taskbar at the bottom; the panel appears on the main display.
+- Windows 11 with the taskbar at the bottom; at first the panel appears on the main display.
 - NVIDIA graphics card for GPU data (read from the driver via NVML).
 - MSI Afterburner running — only for CPU temperature and power. The CPU temperature and CPU power graphs
   must be enabled in its monitoring settings. Otherwise those fields show “—”.
@@ -58,6 +61,7 @@ Windows 11 has no API for taskbar widgets, so the panel is a transparent child w
 the taskbar left of the tray. It is drawn with WPF and shown through a per-pixel-alpha layered window.
 When the taskbar icons are aligned left, Windows puts the Widgets button (weather) next to the tray;
 the panel then moves left of it. The button has no window of its own, so its position comes from UI Automation.
+Dragged off the taskbar, the panel becomes a separate always-on-top window drawn on a card.
 
 | File | What it does |
 |---|---|
@@ -68,8 +72,9 @@ the panel then moves left of it. The button has no window of its own, so its pos
 | `src/PanelRenderer.cs` | How the panel looks |
 | `src/DetailsFlyout.cs`, `src/DetailsRenderer.cs` | Hover card: the window and how it looks |
 | `src/Theme.cs`, `src/Strings.cs` | Light and dark colors, temperature colors; English and Russian texts |
-| `src/Settings.cs`, `src/Autostart.cs` | Settings from the menu and start with Windows |
+| `src/Settings.cs`, `src/Autostart.cs` | Settings from the menu and placement; start with Windows |
 | `src/Paint.cs`, `src/LayeredCanvas.cs` | Drawing helpers and output to a transparent window |
+| `src/Displays.cs` | Displays and their taskbars |
 | `src/Native.cs`, `src/Log.cs` | Windows API calls; error log |
 
 Sizes in the renderers are in pixels for a 125% display scale and are recalculated for the actual one.

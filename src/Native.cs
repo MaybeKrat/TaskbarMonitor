@@ -1,5 +1,6 @@
 using System;
 using System.Runtime.InteropServices;
+using System.Text;
 
 namespace TaskbarMonitor;
 
@@ -11,13 +12,16 @@ internal static class Native
     public const int WS_POPUP = unchecked((int)0x80000000), WS_CHILD = 0x40000000, WS_CLIPSIBLINGS = 0x04000000;
     public const int WS_EX_NOPARENTNOTIFY = 0x4, WS_EX_TOPMOST = 0x8, WS_EX_TRANSPARENT = 0x20, WS_EX_TOOLWINDOW = 0x80,
         WS_EX_LAYERED = 0x80000, WS_EX_NOACTIVATE = 0x08000000;
-    public const uint WM_DESTROY = 0x0002, WM_MOUSEMOVE = 0x0200, WM_LBUTTONUP = 0x0202, WM_RBUTTONUP = 0x0205,
-        WM_MOUSEHOVER = 0x02A1, WM_MOUSELEAVE = 0x02A3;
+    public const uint WM_DESTROY = 0x0002, WM_MOUSEMOVE = 0x0200, WM_LBUTTONDOWN = 0x0201, WM_LBUTTONUP = 0x0202, WM_RBUTTONUP = 0x0205,
+        WM_CAPTURECHANGED = 0x0215, WM_MOUSEHOVER = 0x02A1, WM_MOUSELEAVE = 0x02A3;
     public const uint SWP_NOACTIVATE = 0x0010, SWP_SHOWWINDOW = 0x0040;
     public const int SW_HIDE = 0;
     public const uint GW_HWNDPREV = 3;
     public const uint TME_HOVER = 0x1, TME_LEAVE = 0x2;
-    public const uint MONITOR_DEFAULTTOPRIMARY = 1;
+    public const uint MONITOR_DEFAULTTONEAREST = 2;
+    public const int MDT_EFFECTIVE_DPI = 0;
+    public const int SM_SWAPBUTTON = 23, SM_CXDRAG = 68, SM_CYDRAG = 69;
+    public const int VK_LBUTTON = 1, VK_RBUTTON = 2;
     public const int IDC_ARROW = 32512;
     public const uint MF_STRING = 0, MF_BYCOMMAND = 0, MF_CHECKED = 0x8, MF_POPUP = 0x10, MF_SEPARATOR = 0x800;
     public const uint TPM_RIGHTBUTTON = 0x0002, TPM_BOTTOMALIGN = 0x0020, TPM_RETURNCMD = 0x0100;
@@ -32,7 +36,14 @@ internal static class Native
     [StructLayout(LayoutKind.Sequential)] public struct SIZE { public int cx, cy; }
     [StructLayout(LayoutKind.Sequential)] public struct BLENDFUNCTION { public byte BlendOp, BlendFlags, SourceConstantAlpha, AlphaFormat; }
     [StructLayout(LayoutKind.Sequential)] public struct TRACKMOUSEEVENT { public int cbSize; public uint dwFlags; public IntPtr hwndTrack; public uint dwHoverTime; }
-    [StructLayout(LayoutKind.Sequential)] public struct MONITORINFO { public int cbSize; public RECT rcMonitor, rcWork; public uint dwFlags; }
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    public struct MONITORINFO   // MONITORINFOEX: с именем монитора
+    {
+        public int cbSize;
+        public RECT rcMonitor, rcWork;
+        public uint dwFlags;
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)] public string szDevice;
+    }
 
     [StructLayout(LayoutKind.Sequential)]
     public struct BITMAPINFOHEADER
@@ -70,7 +81,15 @@ internal static class Native
     [DllImport("user32.dll")] public static extern bool SetWindowPos(IntPtr hwnd, IntPtr after, int x, int y, int w, int h, uint flags);
     [DllImport("user32.dll")] public static extern uint GetDpiForWindow(IntPtr hwnd);
     [DllImport("user32.dll")] public static extern IntPtr MonitorFromWindow(IntPtr hwnd, uint flags);
-    [DllImport("user32.dll")] public static extern bool GetMonitorInfo(IntPtr monitor, ref MONITORINFO info);
+    [DllImport("user32.dll")] public static extern IntPtr MonitorFromPoint(POINT point, uint flags);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern bool GetMonitorInfo(IntPtr monitor, ref MONITORINFO info);
+    [DllImport("shcore.dll")] public static extern int GetDpiForMonitor(IntPtr monitor, int type, out uint dpiX, out uint dpiY);
+    [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern int GetClassName(IntPtr hwnd, StringBuilder name, int size);
+    [DllImport("user32.dll")] public static extern IntPtr SetCapture(IntPtr hwnd);
+    [DllImport("user32.dll")] public static extern bool ReleaseCapture();
+    [DllImport("user32.dll")] public static extern short GetAsyncKeyState(int key);
+    [DllImport("user32.dll")] public static extern int GetSystemMetrics(int index);
     [DllImport("user32.dll")] public static extern bool TrackMouseEvent(ref TRACKMOUSEEVENT tme);
     [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern IntPtr LoadCursor(IntPtr instance, IntPtr name);
     [DllImport("user32.dll")] public static extern bool GetCursorPos(out POINT point);

@@ -2,6 +2,7 @@ using System;
 using System.ComponentModel;
 using System.Runtime.InteropServices;
 using static TaskbarMonitor.Native;
+using static TaskbarMonitor.Paint;
 
 namespace TaskbarMonitor;
 
@@ -9,7 +10,7 @@ namespace TaskbarMonitor;
 internal sealed class DetailsFlyout : IDisposable
 {
     const string ClassName = "TaskbarMonitorDetails";
-    const double TaskbarGap = 8, ScreenEdge = 12;   // px при 125%
+    const double PanelGap = 8, ScreenEdge = 12;   // px при 125%
 
     readonly DetailsRenderer _renderer = new();
     readonly LayeredCanvas _canvas = new();
@@ -26,13 +27,17 @@ internal sealed class DetailsFlyout : IDisposable
         if (_hwnd == IntPtr.Zero) throw new Win32Exception();
     }
 
-    /// <summary>Показывает или обновляет карточку: по центру над панелью, но не за краем экрана.</summary>
-    public void Show(Sample s, Theme t, double k, RECT panel, RECT bar)
+    /// <summary>
+    /// Показывает или обновляет карточку: по центру над панелью, а если сверху нет места — под ней.
+    /// За края area карточка не выходит.
+    /// </summary>
+    public void Show(Sample s, Theme t, double k, RECT panel, RECT area)
     {
         var (w, h) = _renderer.Size(s, k);
-        int shadow = (int)Math.Round(DetailsRenderer.Shadow * k), edge = (int)Math.Round(ScreenEdge * k);
-        int x = Math.Clamp((panel.Left + panel.Right - w) / 2, bar.Left + edge - shadow, bar.Right - edge - w + shadow);
-        int y = bar.Top - (int)Math.Round(TaskbarGap * k) - h + shadow;
+        int shadow = (int)Math.Round(CardShadow * k), edge = (int)Math.Round(ScreenEdge * k), gap = (int)Math.Round(PanelGap * k);
+        int x = Math.Clamp((panel.Left + panel.Right - w) / 2, area.Left + edge - shadow, area.Right - edge - w + shadow);
+        int y = panel.Top - gap - h + shadow;
+        if (y + shadow < area.Top + edge) y = panel.Bottom + gap - shadow;
         _canvas.Present(_hwnd, w, h, dc => _renderer.Draw(dc, s, t, k, w, h));
         SetWindowPos(_hwnd, HWND_TOPMOST, x, y, w, h, SWP_NOACTIVATE | SWP_SHOWWINDOW);
         _visible = true;

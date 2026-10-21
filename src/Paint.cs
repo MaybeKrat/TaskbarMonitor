@@ -34,6 +34,24 @@ internal static class Paint
 
     public static string Degrees(double value) => double.IsNaN(value) ? "—" : $"{value.ToString("0", Culture)}°";
 
+    /// <summary>Поле вокруг карточки под тень, px при 125%.</summary>
+    public const double CardShadow = 12;
+    const double CardRadius = 8;
+
+    /// <summary>Карточка: фон с рамкой и мягкой тенью. Тень выходит за card на CardShadow × k.</summary>
+    public static void Card(DrawingContext dc, Rect card, Theme t, double k)
+    {
+        // Тень — полупрозрачные слои, каждый чуть больше предыдущего, сдвинуты вниз.
+        double offset = Math.Round(2 * k), radius = CardRadius * k;
+        int layers = (int)(Math.Round(CardShadow * k) - offset);
+        var shadow = Brush(Color.FromArgb((byte)Math.Max(1, t.ShadowAlpha / layers), 0, 0, 0));
+        for (int i = 1; i <= layers; i++)
+            dc.DrawRoundedRectangle(shadow, null, new Rect(card.X - i, card.Y - i + offset, card.Width + 2 * i, card.Height + 2 * i),
+                radius + i, radius + i);
+        dc.DrawRoundedRectangle(Brush(t.Surface), new Pen(Brush(t.SurfaceBorder), 1),
+            new Rect(card.X + 0.5, card.Y + 0.5, card.Width - 1, card.Height - 1), radius, radius);
+    }
+
     public static SolidColorBrush Brush(Color c)
     {
         var brush = new SolidColorBrush(c);

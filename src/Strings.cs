@@ -16,5 +16,6 @@ internal static class Strings
     public static readonly string Vram = Russian ? "Видеопамять" : "VRAM";
     public static readonly string Fans = Russian ? "Вентиляторы" : "Fans";
     public static readonly string Autostart = Russian ? "Автозапуск" : "Start with Windows";
+    public static readonly string BackToTray = Russian ? "Вернуть к трею" : "Move back to the tray";
     public static readonly string Exit = Russian ? "Выход" : "Exit";
 }
