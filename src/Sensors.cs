@@ -63,7 +63,7 @@ internal sealed record Sample
 internal sealed class Sensors : IDisposable
 {
     const double GiB = 1024d * 1024 * 1024;
-    readonly IntPtr _query, _utility, _performance, _frequency, _gpu;
+    readonly IntPtr _query, _time, _performance, _frequency, _gpu;
     readonly bool _nvml;
     readonly string _cpuName, _gpuName = "";
 
@@ -71,7 +71,7 @@ internal sealed class Sensors : IDisposable
     {
         if (PdhOpenQuery(null, IntPtr.Zero, out _query) == 0)
         {
-            PdhAddEnglishCounter(_query, @"\Processor Information(_Total)\% Processor Utility", IntPtr.Zero, out _utility);
+            PdhAddEnglishCounter(_query, @"\Processor Information(_Total)\% Processor Time", IntPtr.Zero, out _time);
             PdhAddEnglishCounter(_query, @"\Processor Information(_Total)\% Processor Performance", IntPtr.Zero, out _performance);
             PdhAddEnglishCounter(_query, @"\Processor Information(_Total)\Processor Frequency", IntPtr.Zero, out _frequency);
             PdhCollectQueryData(_query);   // проценты считаются по разнице двух замеров
@@ -96,7 +96,7 @@ internal sealed class Sensors : IDisposable
         double cpuLoad = double.NaN, cpuGhz = double.NaN;
         if (_query != IntPtr.Zero && PdhCollectQueryData(_query) == 0)
         {
-            cpuLoad = Value(_utility, 0);   // как в Диспетчере задач: не больше 100%
+            cpuLoad = Value(_time, 0);   // как в Диспетчере задач: доля времени, когда ядра заняты, без поправки на частоту
             // Частота как в Диспетчере задач: базовая частота × текущая доля производительности.
             cpuGhz = Value(_frequency, PDH_FMT_NOCAP100) * Value(_performance, PDH_FMT_NOCAP100) / 100 / 1000;
         }
