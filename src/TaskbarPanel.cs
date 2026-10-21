@@ -1,6 +1,7 @@
 using System;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using System.Windows;
@@ -199,15 +200,18 @@ internal sealed class TaskbarPanel : IDisposable
         return right - width;
     }
 
-    /// <summary>Панель отдельной карточкой на экране, в масштабе монитора; clamp — не заходить за его рабочую область.</summary>
+    /// <summary>
+    /// Панель отдельной карточкой на экране, в масштабе монитора; clamp — не заходить за край монитора.
+    /// Панель задач карточке не мешает: её можно поставить и поверх неё.
+    /// </summary>
     Layout Floating(Display display, POINT at, bool clamp)
     {
         var (width, height) = _renderer.Size(_sample, display.K, docked: false);
         if (clamp)
         {
-            RECT work = display.Work;
-            at.X = Math.Clamp(at.X, work.Left, Math.Max(work.Left, work.Right - width));
-            at.Y = Math.Clamp(at.Y, work.Top, Math.Max(work.Top, work.Bottom - height));
+            RECT b = display.Bounds;
+            at.X = Math.Clamp(at.X, b.Left, Math.Max(b.Left, b.Right - width));
+            at.Y = Math.Clamp(at.Y, b.Top, Math.Max(b.Top, b.Bottom - height));
         }
         var content = new RECT { Left = at.X, Top = at.Y, Right = at.X + width, Bottom = at.Y + height };
         return new Layout(IntPtr.Zero, IntPtr.Zero, content, display.K, (int)Math.Round(CardShadow * display.K), display, display.K);
@@ -262,11 +266,24 @@ internal sealed class TaskbarPanel : IDisposable
         if (_parent != IntPtr.Zero) ScreenToClient(_parent, ref origin);
         int w = _width + 2 * _margin, h = _height + 2 * _margin;
         bool moved = origin.X != _placed.Left || origin.Y != _placed.Top || w != _placed.Right - _placed.Left || h != _placed.Bottom - _placed.Top;
-        bool covered = _parent != IntPtr.Zero && GetWindow(_hwnd, GW_HWNDPREV) != IntPtr.Zero;   // Проводник поднял над панелью своё окно
+        bool topmost = _parent == IntPtr.Zero && (_dragging || _docked || _settings.OnTop);
+        // Проводник поднял над панелью своё окно: над встроенной — любое, над карточкой — панель задач после щелчка по ней.
+        bool covered = _parent != IntPtr.Zero ? GetWindow(_hwnd, GW_HWNDPREV) != IntPtr.Zero : topmost && TaskbarAbove();
         if (!moved && !covered && IsWindowVisible(_hwnd)) return;
-        IntPtr z = _parent != IntPtr.Zero ? HWND_TOP : _dragging || _docked || _settings.OnTop ? HWND_TOPMOST : HWND_NOTOPMOST;
+        IntPtr z = _parent != IntPtr.Zero ? HWND_TOP : topmost ? HWND_TOPMOST : HWND_NOTOPMOST;
         SetWindowPos(_hwnd, z, origin.X, origin.Y, w, h, SWP_NOACTIVATE | SWP_SHOWWINDOW);
         _placed = new RECT { Left = origin.X, Top = origin.Y, Right = origin.X + w, Bottom = origin.Y + h };
+    }
+
+    /// <summary>Выше карточки в порядке окон стоит панель задач, которая её перекрывает.</summary>
+    bool TaskbarAbove()
+    {
+        if (!GetWindowRect(_hwnd, out RECT me)) return false;
+        var bars = Displays.Taskbars().ToHashSet();
+        for (IntPtr w = GetWindow(_hwnd, GW_HWNDPREV); w != IntPtr.Zero; w = GetWindow(w, GW_HWNDPREV))
+            if (bars.Contains(w) && GetWindowRect(w, out RECT r) && r.Left < me.Right && r.Right > me.Left && r.Top < me.Bottom && r.Bottom > me.Top)
+                return true;
+        return false;
     }
 
     /// <summary>Окно панели: дочернее окно панели задач parent, а без parent — отдельное окно поверх остальных.</summary>
