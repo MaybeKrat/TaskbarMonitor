@@ -25,12 +25,16 @@ Hover over it to see the details.
 
 - Windows 11 with the taskbar at the bottom; the panel appears on the main display.
 - NVIDIA graphics card for GPU data (read from the driver via NVML).
-- MSI Afterburner running — only for CPU temperature and power. Without it those fields show “—”.
+- MSI Afterburner running — only for CPU temperature and power. The CPU temperature and CPU power graphs
+  must be enabled in its monitoring settings. Otherwise those fields show “—”.
 
 ## Download
 
 Download `TaskbarMonitor.exe` from [Releases](https://github.com/MaybeKrat/TaskbarMonitor/releases/latest)
 and run it. It is a single self-contained file: .NET does not need to be installed.
+
+The exe is not signed, so on first launch Windows may show a SmartScreen warning “Windows protected
+your PC”. Click “More info” → “Run anyway”.
 
 Settings are stored in `%APPDATA%\TaskbarMonitor\settings.json`, errors are logged to `error.log`
 next to the exe.
