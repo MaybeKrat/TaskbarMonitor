@@ -56,6 +56,10 @@ internal static class Displays
             && GetWindowRect(window, out RECT r) && r.Left <= b.Left && r.Top <= b.Top && r.Right >= b.Right && r.Bottom >= b.Bottom;
     }
 
+    /// <summary>Панель задач скрыта или уехала за нижний край экрана: спрятана автоскрытием, прячется или показывается.</summary>
+    public static bool Hidden(IntPtr bar) =>
+        !IsWindowVisible(bar) || GetWindowRect(bar, out RECT r) && r.Bottom > Of(bar).Bounds.Bottom;
+
     /// <summary>Где панель задач, когда она видна: спрятанная автоскрытием уезжает за нижний край монитора.</summary>
     public static RECT Shown(IntPtr bar)
     {

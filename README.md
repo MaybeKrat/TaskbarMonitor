@@ -16,15 +16,17 @@ Hover over it to see the details.
 - Under each label — any values you pick in the settings: CPU load, clock, temperature, power; RAM load,
   used, free; GPU load, clock, temperature, power, VRAM, fans.
 - Settings window (right-click → Settings…): show, hide and reorder CPU, RAM and GPU, choose their values,
-  turn the rings on or off, put items and values in a row or in a column, keep the card on top of other
-  windows, hide it in full-screen apps. Changes apply at once.
+  turn the rings on or off, put items and values in a row or in a column, snap to the taskbar or not,
+  stay in place when the taskbar auto-hides, keep the card on top of other windows, hide it in full-screen
+  apps. Changes apply at once.
 - Hover card: CPU load, clock, temperature and power; RAM load, used and free; GPU load, clock,
   temperature, power and its limit, VRAM, fans. Temperatures are colored from normal to red.
 - Click opens Task Manager. Right-click menu: settings, pin on top (for the card on the screen),
   move back to the tray, start with Windows, exit.
 - Drag the panel with the mouse anywhere: along the taskbar, onto the taskbar of another display, or onto
   the screen as a separate card. Near a taskbar it snaps into it. By default the card stays on top of other
-  windows and hides while a full-screen app is in front, like the taskbar.
+  windows and hides while a full-screen app is in front, like the taskbar. When an auto-hiding taskbar
+  hides, the panel stays in place as a card.
 - Light and dark taskbar, any resolution and display scale. English or Russian, following Windows.
 - No administrator rights required.
 

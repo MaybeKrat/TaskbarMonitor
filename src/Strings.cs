@@ -42,6 +42,12 @@ internal static class Strings
     public static readonly string PlaceHint = Russian
         ? "Чтобы переставить панель, перетащите её мышью: вдоль панели задач, на другой монитор или на экран."
         : "To move the panel, drag it with the mouse: along the taskbar, to another display or onto the screen.";
+    public static readonly string SnapToTaskbar = Russian
+        ? "Примагничиваться к панели задач при перетаскивании"
+        : "Snap to the taskbar while dragging";
+    public static readonly string StayWhenTaskbarHides = Russian
+        ? "Оставаться на месте, когда панель задач скрывается"
+        : "Stay in place when the taskbar auto-hides";
     public static readonly string OnTop = Russian ? "Поверх всех окон" : "On top of all windows";
     public static readonly string HideInFullscreen = Russian
         ? "Прятать, пока открыта игра или видео на весь экран"

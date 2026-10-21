@@ -30,7 +30,7 @@ internal sealed class Widgets
             if (tray == IntPtr.Zero) return null;
             // Пока панель задач спрятана автоскрытием, Проводник может убрать кнопку, а при показе создать заново.
             // Поэтому до полного показа кнопка считается на прежнем месте.
-            if (Hidden(tray))
+            if (Displays.Hidden(tray))
             {
                 _lastSeen = now;
                 return _last;
@@ -61,8 +61,4 @@ internal sealed class Widgets
                 return button;
         return null;
     }
-
-    /// <summary>Панель задач скрыта или уехала за нижний край экрана: спрятана автоскрытием, прячется или показывается.</summary>
-    static bool Hidden(IntPtr tray) =>
-        !IsWindowVisible(tray) || GetWindowRect(tray, out RECT bar) && bar.Bottom > Displays.Of(tray).Bounds.Bottom;
 }

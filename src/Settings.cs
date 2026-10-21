@@ -45,6 +45,10 @@ internal sealed record Settings
     /// <summary>На панели задач — центр панели в долях её ширины; на экране — левый верхний угол в пикселях.</summary>
     public double X { get; init; }
     public double Y { get; init; }
+    /// <summary>Перетаскиваемая панель примагничивается к панели задач и встраивается в неё.</summary>
+    public bool SnapToTaskbar { get; init; } = true;
+    /// <summary>Панель задач спрятана автоскрытием — панель остаётся на месте отдельной карточкой.</summary>
+    public bool StayWhenTaskbarHides { get; init; } = true;
     /// <summary>Панель на экране — поверх всех окон.</summary>
     public bool OnTop { get; init; } = true;
     /// <summary>Панель на экране прячется, пока впереди приложение на весь экран.</summary>

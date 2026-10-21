@@ -49,6 +49,10 @@ internal sealed class TaskbarPanel : IDisposable
 
     // Перетаскивание: пока кнопка мыши зажата, панель едет за курсором (кнопку опрашивает таймер, чтобы не зависеть от окна под курсором).
     readonly DispatcherTimer _drag = new(DispatcherPriority.Input) { Interval = TimeSpan.FromMilliseconds(16) };
+    // Автоскрытие панели задач: как только она начала прятаться, панель становится карточкой на том же месте,
+    // а когда показалась — встраивается обратно. Проверка дешёвая, поэтому частая.
+    readonly DispatcherTimer _watch = new(DispatcherPriority.Background) { Interval = TimeSpan.FromMilliseconds(100) };
+    IntPtr _bar;   // панель задач, на которой стоит панель; IntPtr.Zero — панель на экране
     bool _pressed, _dragging;
     POINT _press, _cursor;
     double _grabX, _grabY;   // за какое место взяли панель — в долях её ширины и высоты
@@ -85,6 +89,8 @@ internal sealed class TaskbarPanel : IDisposable
         _details = new DetailsFlyout(_instance);
         _frames.Tick += (_, _) => Animate();
         _drag.Tick += (_, _) => DragStep();
+        _watch.Tick += (_, _) => WatchTaskbar();
+        _watch.Start();
     }
 
     /// <param name="widgets">Где на экране кнопка «Виджеты»; null — её нет.</param>
@@ -118,9 +124,11 @@ internal sealed class TaskbarPanel : IDisposable
         _k = layout.K;
         _margin = layout.Margin;
         _docked = layout.Bar != IntPtr.Zero;
+        _bar = layout.Bar;
 
         // Отдельная панель прячется, пока впереди игра или видео на весь экран, — как и панель задач.
-        if (!_dragging && layout.Parent == IntPtr.Zero && _settings.HideInFullscreen && Displays.FullscreenApp(layout.Display))
+        // Оставшаяся на месте спрятанной панели задач прячется всегда: сама панель задач в играх тоже не видна.
+        if (!_dragging && layout.Parent == IntPtr.Zero && (_docked || _settings.HideInFullscreen) && Displays.FullscreenApp(layout.Display))
         {
             _showDetails = false;
             _details.Hide();
@@ -142,7 +150,19 @@ internal sealed class TaskbarPanel : IDisposable
             return Floating(Displays.At(at), at, clamp: true);
         }
         IntPtr bar = _settings.Placement == Placement.Taskbar ? Displays.Taskbar(_settings.Display) : FindWindow("Shell_TrayWnd", null);
-        return bar == IntPtr.Zero ? null : Docked(bar, _settings.Placement == Placement.Taskbar ? _settings.X : null, embedded: true);
+        if (bar == IntPtr.Zero) return null;
+        double? x = _settings.Placement == Placement.Taskbar ? _settings.X : null;
+        if (!_settings.StayWhenTaskbarHides || !Displays.Hidden(bar)) return Docked(bar, x, embedded: true);
+        // Панель задач спрятана автоскрытием: панель остаётся на её месте карточкой поверх окон.
+        Layout stay = Docked(bar, x, embedded: false);
+        return stay with { Margin = (int)Math.Round(CardShadow * stay.K) };
+    }
+
+    /// <summary>Панель задач спряталась или показалась — панель переходит в карточку на её месте или обратно.</summary>
+    void WatchTaskbar()
+    {
+        if (_dragging || _bar == IntPtr.Zero || _settings.Placement == Placement.Screen || !_settings.StayWhenTaskbarHides) return;
+        if (Displays.Hidden(_bar) != (_parent == IntPtr.Zero)) Refresh();
     }
 
     /// <summary>
@@ -195,11 +215,11 @@ internal sealed class TaskbarPanel : IDisposable
 
     /// <summary>
     /// Перетаскиваемая панель едет за курсором. Над панелью задач любого монитора или чуть выше неё
-    /// панель примагничивается: встаёт в неё по высоте и выглядит как встроенная.
+    /// панель примагничивается (если это не выключено): встаёт в неё по высоте и выглядит как встроенная.
     /// </summary>
     Layout DragLayout()
     {
-        foreach (IntPtr bar in Displays.Taskbars())
+        foreach (IntPtr bar in _settings.SnapToTaskbar ? Displays.Taskbars() : [])
         {
             RECT r = Displays.Shown(bar);
             double k = (r.Bottom - r.Top) / 60.0;
@@ -244,7 +264,7 @@ internal sealed class TaskbarPanel : IDisposable
         bool moved = origin.X != _placed.Left || origin.Y != _placed.Top || w != _placed.Right - _placed.Left || h != _placed.Bottom - _placed.Top;
         bool covered = _parent != IntPtr.Zero && GetWindow(_hwnd, GW_HWNDPREV) != IntPtr.Zero;   // Проводник поднял над панелью своё окно
         if (!moved && !covered && IsWindowVisible(_hwnd)) return;
-        IntPtr z = _parent != IntPtr.Zero ? HWND_TOP : _dragging || _settings.OnTop ? HWND_TOPMOST : HWND_NOTOPMOST;
+        IntPtr z = _parent != IntPtr.Zero ? HWND_TOP : _dragging || _docked || _settings.OnTop ? HWND_TOPMOST : HWND_NOTOPMOST;
         SetWindowPos(_hwnd, z, origin.X, origin.Y, w, h, SWP_NOACTIVATE | SWP_SHOWWINDOW);
         _placed = new RECT { Left = origin.X, Top = origin.Y, Right = origin.X + w, Bottom = origin.Y + h };
     }
@@ -474,6 +494,7 @@ internal sealed class TaskbarPanel : IDisposable
     {
         _frames.Stop();
         _drag.Stop();
+        _watch.Stop();
         _settingsWindow?.Close();
         DestroyPanel();
         _details.Dispose();

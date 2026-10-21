@@ -46,6 +46,8 @@ internal sealed class SettingsWindow : Window
         root.Children.Add(Header(Strings.PlaceHeader));
         root.Children.Add(PlaceRow());
         root.Children.Add(Hint(Strings.PlaceHint));
+        root.Children.Add(Toggle(Strings.SnapToTaskbar, () => _get().SnapToTaskbar, v => Apply(_get() with { SnapToTaskbar = v })));
+        root.Children.Add(Toggle(Strings.StayWhenTaskbarHides, () => _get().StayWhenTaskbarHides, v => Apply(_get() with { StayWhenTaskbarHides = v })));
         root.Children.Add(Toggle(Strings.OnTop, () => _get().OnTop, v => Apply(_get() with { OnTop = v })));
         root.Children.Add(Toggle(Strings.HideInFullscreen, () => _get().HideInFullscreen, v => Apply(_get() with { HideInFullscreen = v })));
         root.Children.Add(Hint(Strings.ScreenOnlyHint));
