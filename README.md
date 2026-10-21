@@ -28,6 +28,22 @@ Hover over it to see the details.
 - Light and dark taskbar, any resolution and display scale. English or Russian, following Windows.
 - No administrator rights required.
 
+## Layouts
+
+Several values under each label, in a row or in a column:
+
+![Several values in a row](docs/values.png)
+
+![Values in a column](docs/column.png)
+
+Anywhere on the screen as a card: items in a column, without rings, or the same as on the taskbar:
+
+![Cards on the screen](docs/card.png)
+
+All of it is set in the settings window:
+
+<img src="docs/settings_en.png" alt="Settings window" width="420">
+
 ## Requirements
 
 - Windows 11 with the taskbar at the bottom; at first the panel appears on the main display.
